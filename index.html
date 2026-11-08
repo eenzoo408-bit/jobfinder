@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JOBFINDER — Le travail près de chez toi</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--navy:#10233f;--blue:#2563eb;--pale:#eef4ff;--ink:#172338;--muted:#66748a;--line:#e4eaf2;--green:#16845b}
+*{box-sizing:border-box}body{margin:0;background:#f6f8fc;color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+header{background:var(--navy);color:white;padding:18px 20px 22px}
+.top{max-width:1100px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font-size:23px;font-weight:850;letter-spacing:.4px}.brand span{color:#79a8ff}
+.tag{font-size:12px;color:#d6e3ff;border:1px solid #536987;border-radius:20px;padding:6px 10px}
+h1{max-width:1100px;margin:25px auto 7px;font-size:clamp(26px,5vw,40px);line-height:1.08}
+.sub{max-width:1100px;margin:auto;color:#d5e0f1;font-size:15px}
+main{max-width:1100px;margin:20px auto;padding:0 14px}
+.notice{background:#fff8e7;border:1px solid #f2d99c;color:#76520a;padding:11px 13px;border-radius:12px;font-size:13px;margin-bottom:14px}
+.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 5px 20px #1723380a}
+.searchrow{display:flex;gap:9px;flex-wrap:wrap}.searchrow input{flex:1;min-width:180px}
+input,select,textarea{font:inherit;border:1px solid #d6deea;border-radius:10px;padding:12px;background:white;color:var(--ink);width:100%}
+button{border:0;border-radius:10px;background:var(--blue);color:white;font-weight:700;padding:12px 16px;font:inherit;cursor:pointer}
+button.secondary{background:var(--pale);color:#1748a4}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0}
+.filters button{font-size:13px;padding:9px 13px}.filters button.active{background:var(--navy)}
+.layout{display:grid;grid-template-columns:1.25fr .75fr;gap:14px;margin-top:14px}
+#map{height:520px;border-radius:13px;z-index:1}
+.side h2,.form h2{font-size:18px;margin:2px 0 12px}
+.list{display:grid;gap:9px;max-height:455px;overflow:auto}
+.item{border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer}
+.item:hover{border-color:#8aabed;background:#fbfdff}
+.itemtop{display:flex;justify-content:space-between;gap:8px;align-items:start}
+.item strong{font-size:15px}.pill{font-size:11px;border-radius:20px;padding:5px 8px;background:#eaf1ff;color:#1d4fa8;white-space:nowrap}
+.pill.company{background:#e7f7ef;color:#13734e}
+.meta{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5}
+.detail{margin-top:12px;border-top:1px solid var(--line);padding-top:12px;font-size:13px;line-height:1.55}
+.detail a{color:#1748a4;font-weight:700}
+.form{margin-top:14px}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.formgrid .full{grid-column:1/-1}
+.small{font-size:12px;color:var(--muted);line-height:1.5}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:25px 12px}
+@media(max-width:760px){.layout{grid-template-columns:1fr}#map{height:390px}.list{max-height:300px}.top{align-items:flex-start}.tag{max-width:140px;text-align:center}.formgrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="top"><div class="brand">JOB<span>FINDER</span></div><div class="tag">Prototype de démonstration</div></div>
+  <h1>Le travail près de chez toi.</h1>
+  <p class="sub">Repère les entreprises qui recrutent, explore les offres et découvre les contacts utiles.</p>
+</header>
+<main>
+  <div class="notice"><b>Version test :</b> les annonces affichées sont fictives. Les annonces ajoutées ici restent uniquement dans cette page et ne sont pas publiées sur Internet.</div>
+  <section class="panel">
+    <div class="searchrow">
+      <input id="place" placeholder="Entre une ville ou un code postal (ex. Strasbourg)">
+      <button id="search">Rechercher sur la carte</button>
+    </div>
+    <div class="filters">
+      <button class="active" data-filter="all">Tout afficher</button>
+      <button class="secondary" data-filter="job">Offres d'emploi</button>
+      <button class="secondary" data-filter="company">Entreprises</button>
+    </div>
+  </section>
+  <div class="layout">
+    <section class="panel"><div id="map" aria-label="Carte des entreprises et offres"></div></section>
+    <aside class="panel side">
+      <h2>À découvrir sur la carte</h2>
+      <div id="list" class="list"></div>
+      <div id="detail" class="detail">Choisis une épingle ou une annonce pour voir les détails.</div>
+    </aside>
+  </div>
+  <section class="panel form">
+    <h2>Tu représentes une entreprise ?</h2>
+    <p class="small">Teste le formulaire de dépôt d'annonce. Dans cette maquette, l'annonce est ajoutée temporairement sur la carte de démonstration, sans être envoyée à un vrai service.</p>
+    <form id="postform" class="formgrid">
+      <input required id="companyName" placeholder="Nom de l'entreprise">
+      <select id="kind"><option value="job">Je propose un emploi</option><option value="company">Je présente mon entreprise</option></select>
+      <input required id="role" placeholder="Poste ou activité (ex. vendeur, garage)">
+      <input id="salary" placeholder="Salaire (facultatif, ex. 1 800 € brut/mois)">
+      <input required id="city" class="full" placeholder="Ville de l'annonce">
+      <input id="phone" placeholder="Téléphone professionnel (facultatif)">
+      <input id="address" placeholder="Adresse professionnelle (facultatif)">
+      <textarea id="description" class="full" rows="3" placeholder="Description courte"></textarea>
+      <button class="full" type="submit">Ajouter à la carte de test</button>
+    </form>
+    <p id="formmsg" class="small" aria-live="polite"></p>
+  </section>
+</main>
+<footer>JOBFINDER — prototype indépendant. Les données de démonstration ne sont pas de vraies offres.</footer>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map=L.map('map').setView([46.6,2.4],6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map);
+const data=[
+{id:1,type:'job',name:'Boulangerie Exemple',role:'Vendeur / vendeuse',city:'Strasbourg',lat:48.5839,lng:7.7455,salary:'Exemple : 1 800 € brut/mois',address:'Adresse fictive — Strasbourg',phone:'',desc:'Annonce fictive pour montrer comment une offre pourrait apparaître.'},
+{id:2,type:'company',name:'Garage Démo',role:'Garage automobile',city:'Strasbourg',lat:48.565,lng:7.76,salary:'',address:'Adresse fictive — Strasbourg',phone:'',desc:'Fiche entreprise fictive. Les coordonnées réelles devront être confirmées.'},
+{id:3,type:'job',name:'Café Démo',role:'Employé polyvalent',city:'Lyon',lat:45.764,lng:4.8357,salary:'Salaire à confirmer',address:'Adresse fictive — Lyon',phone:'',desc:'Annonce fictive de démonstration.'},
+{id:4,type:'company',name:'Atelier Exemple',role:'Atelier / artisan',city:'Paris',lat:48.8566,lng:2.3522,salary:'',address:'Adresse fictive — Paris',phone:'',desc:'Entreprise fictive de démonstration.'}
+];
+let filter='all',markers={};
+const list=document.getElementById('list'),detail=document.getElementById('detail');
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function showDetail(x){
+ detail.innerHTML=`<b>${esc(x.name)}</b><br>${esc(x.role)}<br>${esc(x.city)}<br>${x.salary?'<b>Salaire :</b> '+esc(x.salary)+'<br>':''}${x.address?'<b>Adresse :</b> '+esc(x.address)+'<br>':''}${x.phone?'<b>Téléphone :</b> '+esc(x.phone)+'<br>':''}<p>${esc(x.desc)}</p><span class="small">Donnée de démonstration — à vérifier avant toute candidature.</span>`;
+}
+function render(){
+ list.innerHTML='';
+ data.filter(x=>filter==='all'||x.type===filter).forEach(x=>{
+  const el=document.createElement('div');el.className='item';
+  el.innerHTML=`<div class="itemtop"><strong>${esc(x.name)}</strong><span class="pill ${x.type==='company'?'company':''}">${x.type==='job'?'Emploi':'Entreprise'}</span></div><div class="meta">${esc(x.role)} · ${esc(x.city)}${x.salary?' · '+esc(x.salary):''}</div>`;
+  el.onclick=()=>{map.setView([x.lat,x.lng],14);markers[x.id]?.openPopup();showDetail(x);};list.appendChild(el);
+ });
+ Object.values(markers).forEach(m=>map.removeLayer(m));markers={};
+ data.filter(x=>filter==='all'||x.type===filter).forEach(x=>{
+  const color=x.type==='job'?'#2563eb':'#16845b';
+  const m=L.circleMarker([x.lat,x.lng],{radius:9,color:'#fff',weight:2,fillColor:color,fillOpacity:1}).addTo(map);
+  m.bindPopup(`<b>${esc(x.name)}</b><br>${esc(x.role)}<br>${x.type==='job'?'Offre d’emploi':'Entreprise'} · ${esc(x.city)}`);
+  m.on('click',()=>showDetail(x));markers[x.id]=m;
+ });
+}
+document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.filter;document.querySelectorAll('[data-filter]').forEach(z=>{z.classList.toggle('active',z===b);z.classList.toggle('secondary',z!==b)});render();});
+document.getElementById('search').onclick=async()=>{
+ const q=document.getElementById('place').value.trim();if(!q)return;
+ const btn=document.getElementById('search');btn.disabled=true;btn.textContent='Recherche…';
+ try{const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q+', France'));const a=await r.json();if(!a.length){alert('Ville introuvable. Essaie avec un code postal ou une autre orthographe.');}else{map.setView([+a[0].lat,+a[0].lon],12);}}
+ catch(e){alert('Recherche indisponible pour le moment. Vérifie ta connexion.');}
+ btn.disabled=false;btn.textContent='Rechercher sur la carte';
+};
+document.getElementById('postform').onsubmit=async e=>{
+ e.preventDefault();const city=document.getElementById('city').value.trim();const msg=document.getElementById('formmsg');msg.textContent='Recherche de la ville…';
+ try{
+  const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(city+', France'));const a=await r.json();
+  if(!a.length){msg.textContent='Ville introuvable. Vérifie le nom de la ville.';return;}
+  const x={id:Date.now(),type:document.getElementById('kind').value,name:document.getElementById('companyName').value.trim(),role:document.getElementById('role').value.trim(),city,lat:+a[0].lat,lng:+a[0].lon,salary:document.getElementById('salary').value.trim(),phone:document.getElementById('phone').value.trim(),address:document.getElementById('address').value.trim(),desc:document.getElementById('description').value.trim()||'Description non renseignée.'};
+  data.unshift(x);render();map.setView([x.lat,x.lng],13);showDetail(x);e.target.reset();msg.textContent='Ajouté à la carte de cette démonstration uniquement. Rien n’a été publié.';
+ }catch(err){msg.textContent='Impossible de localiser cette ville. Réessaie plus tard.';}
+};
+render();
+</script>
+</body>
+</html>
